@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Clock, Flame } from "lucide-react";
+import { Pencil, Trash2, Clock, Flame, RotateCcw, BookOpen } from "lucide-react";
 import { StudyItem } from "@/types/study";
 import { daysUntil, priorityScore, todayStr } from "@/lib/adaptive";
 
@@ -62,6 +62,20 @@ export const TaskList = ({ items, onToggle, onEdit, onDelete, emptyMessage, show
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                   <span className="font-semibold">{item.subject}</span>
                   <Badge variant={diffColor(item.difficulty) as any}>{item.difficulty}</Badge>
+                  {item.kind === "review" ? (
+                    <Badge variant="outline" className="border-primary/40 text-primary">
+                      <RotateCcw className="h-3 w-3 mr-1" /> 복습 {item.reviewStage}차
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="border-accent/40 text-accent-foreground">
+                      <BookOpen className="h-3 w-3 mr-1" /> 학습
+                    </Badge>
+                  )}
+                  {item.examDate && (
+                    <Badge variant="outline" className="text-xs">
+                      시험 {item.examDate}
+                    </Badge>
+                  )}
                   {isTopPriority && (
                     <Badge className="gradient-primary text-primary-foreground border-0">
                       <Flame className="h-3 w-3 mr-1" /> 최우선
