@@ -23,6 +23,8 @@ const empty = (): Omit<StudyItem, "id" | "createdAt" | "postponeCount"> => ({
   difficulty: "보통",
   completed: false,
   scheduledDate: todayStr(),
+  kind: "study",
+  examDate: "",
 });
 
 export const StudyForm = ({ open, onOpenChange, onSave, editing }: Props) => {
@@ -31,7 +33,7 @@ export const StudyForm = ({ open, onOpenChange, onSave, editing }: Props) => {
   useEffect(() => {
     if (editing) {
       const { id, createdAt, postponeCount, ...rest } = editing;
-      setForm(rest);
+      setForm({ ...empty(), ...rest });
     } else {
       setForm(empty());
     }
@@ -40,13 +42,15 @@ export const StudyForm = ({ open, onOpenChange, onSave, editing }: Props) => {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.subject.trim() || !form.content.trim()) return;
+    const cleaned = { ...form, examDate: form.examDate || undefined };
     const item: StudyItem = editing
-      ? { ...editing, ...form }
+      ? { ...editing, ...cleaned }
       : {
           id: crypto.randomUUID(),
           createdAt: new Date().toISOString(),
           postponeCount: 0,
-          ...form,
+          ...cleaned,
+          kind: "study",
         };
     onSave(item);
     onOpenChange(false);
@@ -54,7 +58,7 @@ export const StudyForm = ({ open, onOpenChange, onSave, editing }: Props) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editing ? "학습 항목 수정" : "새 학습 항목"}</DialogTitle>
         </DialogHeader>
@@ -65,7 +69,7 @@ export const StudyForm = ({ open, onOpenChange, onSave, editing }: Props) => {
               <Input
                 value={form.subject}
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                placeholder="예) 수학"
+                placeholder="예) 열역학"
                 required
               />
             </div>
@@ -85,11 +89,11 @@ export const StudyForm = ({ open, onOpenChange, onSave, editing }: Props) => {
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>학습 내용</Label>
+            <Label>학습 범위 / 내용</Label>
             <Textarea
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
-              placeholder="예) 미적분 3단원 예제 풀기"
+              placeholder="예) 3장 엔트로피 - 예제 1~10번"
               required
             />
           </div>
@@ -104,12 +108,11 @@ export const StudyForm = ({ open, onOpenChange, onSave, editing }: Props) => {
               />
             </div>
             <div className="space-y-1.5">
-              <Label>마감일</Label>
+              <Label>시험일 (선택)</Label>
               <Input
                 type="date"
-                value={form.deadline}
-                onChange={(e) => setForm({ ...form, deadline: e.target.value })}
-                required
+                value={form.examDate || ""}
+                onChange={(e) => setForm({ ...form, examDate: e.target.value })}
               />
             </div>
             <div className="space-y-1.5">
@@ -124,6 +127,21 @@ export const StudyForm = ({ open, onOpenChange, onSave, editing }: Props) => {
               />
             </div>
           </div>
+          <div className="space-y-1.5">
+            <Label>마감일</Label>
+            <Input
+              type="date"
+              value={form.deadline}
+              onChange={(e) => setForm({ ...form, deadline: e.target.value })}
+              required
+            />
+          </div>
+          {!editing && (
+            <p className="text-xs text-muted-foreground bg-muted/50 rounded-md p-2.5 leading-relaxed">
+              ✨ 새 학습 항목을 추가하면 <b>에빙하우스 망각곡선</b>에 따라 복습 일정이 자동으로 생성돼요
+              (1일·3일·7일·14일·30일 후). 시험일을 입력하면 시험 전 압축 복습으로 조정됩니다.
+            </p>
+          )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>취소</Button>
             <Button type="submit" variant="hero">{editing ? "수정" : "추가"}</Button>
