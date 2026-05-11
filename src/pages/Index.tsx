@@ -1,21 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, BookOpen, CheckCircle2, ListTodo, TrendingUp, Calendar } from "lucide-react";
+import { Plus, BookOpen, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { StudyItem } from "@/types/study";
 import { loadItems, loadMeta, saveItems, saveMeta } from "@/lib/storage";
-import { rolloverItems, todayStr } from "@/lib/adaptive";
+import { adjustReviewsAfterCompletion, buildReviewItems, rolloverItems, todayStr } from "@/lib/adaptive";
 import { StatCard } from "@/components/planner/StatCard";
 import { TaskList } from "@/components/planner/TaskList";
 import { StudyForm } from "@/components/planner/StudyForm";
 import { SubjectProgress } from "@/components/planner/SubjectProgress";
 import { FeedbackPanel } from "@/components/planner/FeedbackPanel";
+import { ReviewCompleteDialog } from "@/components/planner/ReviewCompleteDialog";
 
 const Index = () => {
   const [items, setItems] = useState<StudyItem[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<StudyItem | null>(null);
+  const [reviewDialogItem, setReviewDialogItem] = useState<StudyItem | null>(null);
 
   useEffect(() => {
     const loaded = loadItems();
@@ -35,6 +37,7 @@ const Index = () => {
 
   const today = todayStr();
   const todays = useMemo(() => items.filter((i) => i.scheduledDate === today), [items, today]);
+  const todayReviews = useMemo(() => todays.filter((i) => i.kind === "review"), [todays]);
   const todayDone = todays.filter((i) => i.completed).length;
   const todayRemaining = todays.length - todayDone;
   const totalDone = items.filter((i) => i.completed).length;
@@ -42,26 +45,68 @@ const Index = () => {
   const todayPct = todays.length ? Math.round((todayDone / todays.length) * 100) : 0;
 
   const handleToggle = (id: string) => {
+    const target = items.find((i) => i.id === id);
+    if (!target) return;
+    // 완료로 토글 시: 학습/복습 모두 결과 입력 다이얼로그
+    if (!target.completed) {
+      setReviewDialogItem(target);
+      return;
+    }
+    // 완료 해제
     setItems((prev) =>
-      prev.map((it) =>
-        it.id === id
-          ? { ...it, completed: !it.completed, completedAt: !it.completed ? new Date().toISOString() : undefined }
-          : it,
-      ),
+      prev.map((it) => (it.id === id ? { ...it, completed: false, completedAt: undefined } : it)),
     );
+  };
+
+  const handleReviewSubmit = (understanding: number, wrongCount: number) => {
+    if (!reviewDialogItem) return;
+    const completed: StudyItem = {
+      ...reviewDialogItem,
+      completed: true,
+      completedAt: new Date().toISOString(),
+      understanding,
+      wrongCount,
+    };
+    setItems((prev) => {
+      let next = prev.map((it) => (it.id === completed.id ? completed : it));
+      next = adjustReviewsAfterCompletion(next, completed, { understanding, wrongCount });
+      return next;
+    });
+    if (understanding <= 2 || wrongCount >= 3) {
+      toast.warning("이해도가 낮아요. 보충 복습을 추가했어요.");
+    } else if (understanding === 5 && wrongCount === 0) {
+      toast.success("완벽해요! 다음 복습 1회를 생략했어요.");
+    } else {
+      toast.success("복습 완료! 잘하고 있어요.");
+    }
+    setReviewDialogItem(null);
   };
 
   const handleSave = (item: StudyItem) => {
     setItems((prev) => {
       const exists = prev.some((p) => p.id === item.id);
-      return exists ? prev.map((p) => (p.id === item.id ? item : p)) : [...prev, item];
+      if (exists) return prev.map((p) => (p.id === item.id ? item : p));
+      // 새 학습 항목 → 망각곡선 복습 자동 생성
+      const reviews = item.kind === "study" || !item.kind ? buildReviewItems(item) : [];
+      return [...prev, item, ...reviews];
     });
-    toast.success(editing ? "항목이 수정되었어요." : "새 학습 항목이 추가되었어요.");
+    if (!editing && (item.kind === "study" || !item.kind)) {
+      toast.success("학습 항목과 망각곡선 복습 일정이 자동 생성됐어요.");
+    } else {
+      toast.success("항목이 수정되었어요.");
+    }
     setEditing(null);
   };
 
   const handleDelete = (id: string) => {
-    setItems((prev) => prev.filter((p) => p.id !== id));
+    setItems((prev) => {
+      // 원학습 삭제 시 자식 복습도 함께 제거
+      const target = prev.find((p) => p.id === id);
+      if (target && (target.kind === "study" || !target.kind)) {
+        return prev.filter((p) => p.id !== id && p.parentId !== id);
+      }
+      return prev.filter((p) => p.id !== id);
+    });
     toast.success("항목이 삭제되었어요.");
   };
 
@@ -83,8 +128,8 @@ const Index = () => {
               <BookOpen className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold leading-tight">적응형 학습 플래너</h1>
-              <p className="text-xs text-muted-foreground">나에게 맞춰 진화하는 공부 계획</p>
+              <h1 className="text-xl font-bold leading-tight">RePlan · 적응형 학습 플래너</h1>
+              <p className="text-xs text-muted-foreground">에빙하우스 망각곡선 기반 스마트 복습 관리</p>
             </div>
           </div>
           <Button variant="hero" onClick={openNew}>
@@ -111,11 +156,11 @@ const Index = () => {
               accent="primary"
             />
             <StatCard
-              title="오늘 완료"
-              value={todayDone}
-              subtitle={`달성률 ${todayPct}%`}
-              icon={CheckCircle2}
-              accent="success"
+              title="오늘 복습"
+              value={todayReviews.length}
+              subtitle={`망각곡선 자동 배정`}
+              icon={RotateCcw}
+              accent="accent"
             />
             <StatCard
               title="남은 항목"
@@ -130,7 +175,7 @@ const Index = () => {
               subtitle={`전체 ${items.length}개 중 ${totalDone}개 완료`}
               icon={TrendingUp}
               progress={overallPct}
-              accent="accent"
+              accent="success"
             />
           </div>
         </section>
@@ -140,7 +185,8 @@ const Index = () => {
             <Tabs defaultValue="today">
               <TabsList className="mb-4">
                 <TabsTrigger value="today">오늘의 학습</TabsTrigger>
-                <TabsTrigger value="all">전체 학습 목록</TabsTrigger>
+                <TabsTrigger value="reviews">오늘의 복습</TabsTrigger>
+                <TabsTrigger value="all">전체 목록</TabsTrigger>
               </TabsList>
               <TabsContent value="today" className="mt-0">
                 <TaskList
@@ -150,6 +196,16 @@ const Index = () => {
                   onDelete={handleDelete}
                   showPriority
                   emptyMessage="오늘 계획된 학습이 없어요. 새로 추가해 보세요!"
+                />
+              </TabsContent>
+              <TabsContent value="reviews" className="mt-0">
+                <TaskList
+                  items={todayReviews}
+                  onToggle={handleToggle}
+                  onEdit={openEdit}
+                  onDelete={handleDelete}
+                  showPriority
+                  emptyMessage="오늘 예정된 복습이 없어요."
                 />
               </TabsContent>
               <TabsContent value="all" className="mt-0">
@@ -171,6 +227,12 @@ const Index = () => {
       </main>
 
       <StudyForm open={formOpen} onOpenChange={setFormOpen} onSave={handleSave} editing={editing} />
+      <ReviewCompleteDialog
+        open={!!reviewDialogItem}
+        onOpenChange={(o) => !o && setReviewDialogItem(null)}
+        item={reviewDialogItem}
+        onSubmit={handleReviewSubmit}
+      />
     </div>
   );
 };
