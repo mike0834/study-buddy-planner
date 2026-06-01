@@ -36,7 +36,7 @@ export const TaskList = ({ items, onToggle, onEdit, onDelete, emptyMessage, show
   if (sorted.length === 0)
     return (
       <Card className="p-10 text-center text-muted-foreground shadow-card">
-        {emptyMessage || "항목이 없어요."}
+        {emptyMessage || "아직 등록된 항목이 없어요. 새 학습 계획을 추가해 보세요! ✏️"}
       </Card>
     );
 

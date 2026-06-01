@@ -8,7 +8,7 @@ export const SubjectProgress = ({ items }: { items: StudyItem[] }) => {
   if (stats.length === 0) return null;
   return (
     <Card className="p-6 shadow-card">
-      <h3 className="text-lg font-semibold mb-4">과목별 진도율</h3>
+      <h3 className="text-lg font-semibold mb-4">📊 과목별 진도율</h3>
       <div className="space-y-4">
         {stats.map((s) => {
           const pct = s.total ? Math.round((s.completed / s.total) * 100) : 0;
