@@ -34,7 +34,7 @@ export const FeedbackPanel = ({ items }: { items: StudyItem[] }) => {
         </p>
         {recs.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2">
-            데이터가 쌓이면 과목별 맞춤 추천이 나타나요.
+            💡 학습 데이터가 쌓이면 과목별 맞춤 추천이 여기에 나타나요.
           </p>
         ) : (
           recs.map((r, i) => (
