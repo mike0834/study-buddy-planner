@@ -69,7 +69,7 @@ export const StudyForm = ({ open, onOpenChange, onSave, editing }: Props) => {
               <Input
                 value={form.subject}
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                placeholder="예) 열역학"
+                placeholder="예) 자료구조, 영어 회화, 토익..."
                 required
               />
             </div>
@@ -81,9 +81,9 @@ export const StudyForm = ({ open, onOpenChange, onSave, editing }: Props) => {
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="쉬움">쉬움</SelectItem>
-                  <SelectItem value="보통">보통</SelectItem>
-                  <SelectItem value="어려움">어려움</SelectItem>
+                  <SelectItem value="쉬움">🟢 쉬움</SelectItem>
+                  <SelectItem value="보통">🟡 보통</SelectItem>
+                  <SelectItem value="어려움">🔴 어려움</SelectItem>
                 </SelectContent>
               </Select>
             </div>
