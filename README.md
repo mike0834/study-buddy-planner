@@ -17,7 +17,7 @@
 | 최민기 | [@mike0834](https://github.com/mike0834) | 프로젝트 총괄 · 메인 화면 · 문서화 |
 | (팀원 B) | [@Hyun0325](https://github.com/Hyun0325) | 학습 계획 입력 기능 (StudyForm) |
 | (팀원 C) | (GitHub ID 확인 중) | 진척도 / 통계 UI (SubjectProgress, StatCard, TaskList) |
-| (팀원 D) | (배정 예정) | 복습 / 피드백 기능 (FeedbackPanel, ReviewCompleteDialog) |
+| (팀원 D) | [@wlr6709](https://github.com/wlr6709) | 복습 / 피드백 기능 (FeedbackPanel, ReviewCompleteDialog) |
 
 ## 기술 스택
 
