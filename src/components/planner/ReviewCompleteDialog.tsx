@@ -34,7 +34,7 @@ export const ReviewCompleteDialog = ({ open, onOpenChange, item, onSubmit }: Pro
             <Brain className="h-5 w-5 text-primary" /> 복습 결과 입력
           </DialogTitle>
           <DialogDescription>
-            결과에 따라 다음 복습 일정이 자동 조정돼요.
+            오늘의 복습은 어땠나요? 결과에 따라 다음 복습 일정이 자동으로 조정돼요.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -43,7 +43,7 @@ export const ReviewCompleteDialog = ({ open, onOpenChange, item, onSubmit }: Pro
             <div className="text-muted-foreground text-xs mt-0.5">{item.content}</div>
           </div>
           <div className="space-y-2">
-            <Label>이해도 (1: 전혀 모름 ~ 5: 완벽)</Label>
+            <Label>이해도 (1: 전혀 모름 😵 ~ 5: 완벽 이해 ✨)</Label>
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
