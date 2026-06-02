@@ -15,9 +15,9 @@
 | 이름 | GitHub | 담당 |
 |------|--------|------|
 | 최민기 | [@mike0834](https://github.com/mike0834) | 프로젝트 총괄 · 메인 화면 · 문서화 |
-| (팀원 B) | [@Hyun0325](https://github.com/Hyun0325) | 학습 계획 입력 기능 (StudyForm) |
-| (팀원 C) | (GitHub ID 확인 중) | 진척도 / 통계 UI (SubjectProgress, StatCard, TaskList) |
-| (팀원 D) | [@wlr6709](https://github.com/wlr6709) | 복습 / 피드백 기능 (FeedbackPanel, ReviewCompleteDialog) |
+| 현승재 | [@Hyun0325](https://github.com/Hyun0325) | 학습 계획 입력 기능 (StudyForm) |
+| 이상원 | [@kalleey030807-dotcom] | 진척도 / 통계 UI (SubjectProgress, StatCard, TaskList) |
+| 이동현 | [@wlr6709](https://github.com/wlr6709) | 복습 / 피드백 기능 (FeedbackPanel, ReviewCompleteDialog) |
 
 ## 기술 스택
 
