@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, BookOpen, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw } from "lucide-react";
+import { Plus, BookOpen, BookMarked, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { StudyItem } from "@/types/study";
-import { loadItems, loadMeta, saveItems, saveMeta } from "@/lib/storage";
+import { StudyItem, Subject } from "@/types/study";
+import { loadItems, loadMeta, loadSubjects, saveItems, saveMeta, saveSubjects } from "@/lib/storage";
 import { adjustReviewsAfterCompletion, buildReviewItems, rolloverItems, todayStr } from "@/lib/adaptive";
 import { StatCard } from "@/components/planner/StatCard";
 import { TaskList } from "@/components/planner/TaskList";
@@ -12,10 +12,13 @@ import { StudyForm } from "@/components/planner/StudyForm";
 import { SubjectProgress } from "@/components/planner/SubjectProgress";
 import { FeedbackPanel } from "@/components/planner/FeedbackPanel";
 import { ReviewCompleteDialog } from "@/components/planner/ReviewCompleteDialog";
+import { SubjectManager } from "@/components/planner/SubjectManager";
 
 const Index = () => {
   const [items, setItems] = useState<StudyItem[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [formOpen, setFormOpen] = useState(false);
+  const [subjectManagerOpen, setSubjectManagerOpen] = useState(false);
   const [editing, setEditing] = useState<StudyItem | null>(null);
   const [reviewDialogItem, setReviewDialogItem] = useState<StudyItem | null>(null);
 
@@ -29,10 +32,25 @@ const Index = () => {
     }
     saveMeta({ ...meta, lastRolloverDate: todayStr() });
     setItems(rolled);
+    setSubjects(loadSubjects());
   }, []);
 
   useEffect(() => {
     saveItems(items);
+  }, [items]);
+
+  const handleSubjectsChange = (next: Subject[]) => {
+    setSubjects(next);
+    saveSubjects(next);
+  };
+
+  /** 과목별 학습 항목 수 (과목 삭제 시 경고에 사용) */
+  const itemCountBySubject = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const item of items) {
+      counts[item.subject] = (counts[item.subject] ?? 0) + 1;
+    }
+    return counts;
   }, [items]);
 
   const today = todayStr();
@@ -111,6 +129,12 @@ const Index = () => {
   };
 
   const openNew = () => {
+    // 과목이 하나도 없으면 과목 등록부터 안내
+    if (subjects.length === 0) {
+      toast.info("먼저 공부할 과목을 등록해주세요!");
+      setSubjectManagerOpen(true);
+      return;
+    }
     setEditing(null);
     setFormOpen(true);
   };
@@ -128,13 +152,18 @@ const Index = () => {
               <BookOpen className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold leading-tight">RePlan · 적응형 학습 플래너</h1>
+              <h1 className="text-xl font-bold leading-tight">RevoStudy · 적응형 학습 플래너</h1>
               <p className="text-xs text-muted-foreground">에빙하우스 망각곡선 기반 스마트 복습 관리</p>
             </div>
           </div>
-          <Button variant="hero" onClick={openNew}>
-            <Plus className="h-4 w-4" /> 학습 항목 추가
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setSubjectManagerOpen(true)}>
+              <BookMarked className="h-4 w-4" /> 과목 관리
+            </Button>
+            <Button variant="hero" onClick={openNew}>
+              <Plus className="h-4 w-4" /> 학습 항목 추가
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -226,7 +255,24 @@ const Index = () => {
         </div>
       </main>
 
-      <StudyForm open={formOpen} onOpenChange={setFormOpen} onSave={handleSave} editing={editing} />
+      <StudyForm
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onSave={handleSave}
+        editing={editing}
+        subjects={subjects}
+        onManageSubjects={() => {
+          setFormOpen(false);
+          setSubjectManagerOpen(true);
+        }}
+      />
+      <SubjectManager
+        open={subjectManagerOpen}
+        onOpenChange={setSubjectManagerOpen}
+        subjects={subjects}
+        onChange={handleSubjectsChange}
+        itemCountBySubject={itemCountBySubject}
+      />
       <ReviewCompleteDialog
         open={!!reviewDialogItem}
         onOpenChange={(o) => !o && setReviewDialogItem(null)}
