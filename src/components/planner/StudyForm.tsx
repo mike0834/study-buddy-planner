@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Difficulty, StudyItem } from "@/types/study";
+import { Difficulty, StudyItem, Subject } from "@/types/study";
 import { todayStr } from "@/lib/adaptive";
 
 interface Props {
@@ -13,6 +13,10 @@ interface Props {
   onOpenChange: (o: boolean) => void;
   onSave: (item: StudyItem) => void;
   editing?: StudyItem | null;
+  /** 등록된 과목 목록. 학습 항목은 이 중에서 과목을 선택한다. */
+  subjects: Subject[];
+  /** "과목 관리" 바로가기 */
+  onManageSubjects: () => void;
 }
 
 const empty = (): Omit<StudyItem, "id" | "createdAt" | "postponeCount"> => ({
@@ -27,7 +31,7 @@ const empty = (): Omit<StudyItem, "id" | "createdAt" | "postponeCount"> => ({
   examDate: "",
 });
 
-export const StudyForm = ({ open, onOpenChange, onSave, editing }: Props) => {
+export const StudyForm = ({ open, onOpenChange, onSave, editing, subjects, onManageSubjects }: Props) => {
   const [form, setForm] = useState(empty());
 
   useEffect(() => {
@@ -65,13 +69,33 @@ export const StudyForm = ({ open, onOpenChange, onSave, editing }: Props) => {
         <form onSubmit={submit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>과목명</Label>
-              <Input
-                value={form.subject}
-                onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                placeholder="예) 자료구조, 영어 회화, 토익..."
-                required
-              />
+              <Label>과목</Label>
+              {subjects.length === 0 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start text-muted-foreground"
+                  onClick={onManageSubjects}
+                >
+                  먼저 과목을 등록해주세요 →
+                </Button>
+              ) : (
+                <Select
+                  value={form.subject || undefined}
+                  onValueChange={(v) => setForm({ ...form, subject: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="과목을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {subjects.map((s) => (
+                      <SelectItem key={s.id} value={s.name}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>난이도</Label>
