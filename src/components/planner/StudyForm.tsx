@@ -17,6 +17,8 @@ interface Props {
   subjects: Subject[];
   /** "과목 관리" 바로가기 */
   onManageSubjects: () => void;
+  /** 과목 상세 화면에서 추가할 때: 과목이 이 값으로 고정됨 */
+  fixedSubject?: string;
 }
 
 const empty = (): Omit<StudyItem, "id" | "createdAt" | "postponeCount"> => ({
@@ -31,7 +33,7 @@ const empty = (): Omit<StudyItem, "id" | "createdAt" | "postponeCount"> => ({
   examDate: "",
 });
 
-export const StudyForm = ({ open, onOpenChange, onSave, editing, subjects, onManageSubjects }: Props) => {
+export const StudyForm = ({ open, onOpenChange, onSave, editing, subjects, onManageSubjects, fixedSubject }: Props) => {
   const [form, setForm] = useState(empty());
 
   useEffect(() => {
@@ -39,9 +41,10 @@ export const StudyForm = ({ open, onOpenChange, onSave, editing, subjects, onMan
       const { id, createdAt, postponeCount, ...rest } = editing;
       setForm({ ...empty(), ...rest });
     } else {
-      setForm(empty());
+      // 과목 상세 화면에서 열었으면 그 과목으로 자동 설정
+      setForm({ ...empty(), subject: fixedSubject ?? "" });
     }
-  }, [editing, open]);
+  }, [editing, open, fixedSubject]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +73,11 @@ export const StudyForm = ({ open, onOpenChange, onSave, editing, subjects, onMan
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>과목</Label>
-              {subjects.length === 0 ? (
+              {fixedSubject && !editing ? (
+                <div className="h-10 px-3 flex items-center rounded-md border bg-muted/50 font-medium">
+                  {fixedSubject}
+                </div>
+              ) : subjects.length === 0 ? (
                 <Button
                   type="button"
                   variant="outline"

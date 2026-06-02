@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, BookOpen, BookMarked, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw } from "lucide-react";
+import { Plus, BookOpen, BookMarked, ArrowLeft, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { StudyItem, Subject } from "@/types/study";
@@ -12,7 +13,8 @@ import { StudyForm } from "@/components/planner/StudyForm";
 import { SubjectProgress } from "@/components/planner/SubjectProgress";
 import { FeedbackPanel } from "@/components/planner/FeedbackPanel";
 import { ReviewCompleteDialog } from "@/components/planner/ReviewCompleteDialog";
-import { SubjectManager } from "@/components/planner/SubjectManager";
+import { SubjectManager, subjectColorClass } from "@/components/planner/SubjectManager";
+import { SubjectCard } from "@/components/planner/SubjectCard";
 
 const Index = () => {
   const [items, setItems] = useState<StudyItem[]>([]);
@@ -21,6 +23,8 @@ const Index = () => {
   const [subjectManagerOpen, setSubjectManagerOpen] = useState(false);
   const [editing, setEditing] = useState<StudyItem | null>(null);
   const [reviewDialogItem, setReviewDialogItem] = useState<StudyItem | null>(null);
+  /** 현재 들어가 있는 과목 (null이면 홈 화면) */
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
 
   useEffect(() => {
     const loaded = loadItems();
@@ -52,6 +56,18 @@ const Index = () => {
     }
     return counts;
   }, [items]);
+
+  /** 현재 선택된 과목 객체 */
+  const selectedSubject = useMemo(
+    () => subjects.find((s) => s.id === selectedSubjectId) ?? null,
+    [subjects, selectedSubjectId],
+  );
+
+  /** 선택된 과목의 학습 항목들 */
+  const subjectItems = useMemo(
+    () => (selectedSubject ? items.filter((i) => i.subject === selectedSubject.name) : []),
+    [items, selectedSubject],
+  );
 
   const today = todayStr();
   const todays = useMemo(() => items.filter((i) => i.scheduledDate === today), [items, today]);
@@ -156,18 +172,49 @@ const Index = () => {
               <p className="text-xs text-muted-foreground">에빙하우스 망각곡선 기반 스마트 복습 관리</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setSubjectManagerOpen(true)}>
-              <BookMarked className="h-4 w-4" /> 과목 관리
-            </Button>
-            <Button variant="hero" onClick={openNew}>
-              <Plus className="h-4 w-4" /> 학습 항목 추가
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => setSubjectManagerOpen(true)}>
+            <BookMarked className="h-4 w-4" /> 과목 관리
+          </Button>
         </div>
       </header>
 
       <main className="container py-8 space-y-8">
+        {selectedSubject ? (
+          /* ===== 과목 상세 화면 ===== */
+          <section>
+            <Button
+              variant="ghost"
+              className="mb-4 -ml-2 text-muted-foreground"
+              onClick={() => setSelectedSubjectId(null)}
+            >
+              <ArrowLeft className="h-4 w-4" /> 모든 과목 보기
+            </Button>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <span className={`h-5 w-5 rounded-full ${subjectColorClass(selectedSubject.color)}`} />
+                <div>
+                  <h2 className="text-2xl font-bold">{selectedSubject.name}</h2>
+                  <p className="text-sm text-muted-foreground">
+                    전체 {subjectItems.length}개 · 완료 {subjectItems.filter((i) => i.completed).length}개
+                  </p>
+                </div>
+              </div>
+              <Button variant="hero" onClick={openNew}>
+                <Plus className="h-4 w-4" /> 학습 항목 추가
+              </Button>
+            </div>
+            <TaskList
+              items={subjectItems}
+              onToggle={handleToggle}
+              onEdit={openEdit}
+              onDelete={handleDelete}
+              showPriority
+              emptyMessage={`'${selectedSubject.name}' 과목에 아직 학습 항목이 없어요. 위의 버튼으로 첫 항목을 추가해 보세요!`}
+            />
+          </section>
+        ) : (
+          /* ===== 홈 화면 ===== */
+          <>
         <section>
           <h2 className="text-2xl font-bold mb-1">
             오늘의 <span className="text-gradient">학습 대시보드</span>
@@ -207,6 +254,39 @@ const Index = () => {
               accent="success"
             />
           </div>
+        </section>
+
+        {/* 내 과목 - 과목 카드를 눌러 들어가서 학습 항목을 관리 */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold">
+              내 <span className="text-gradient">과목</span>
+            </h2>
+            <Button variant="outline" size="sm" onClick={() => setSubjectManagerOpen(true)}>
+              <Plus className="h-4 w-4" /> 과목 추가
+            </Button>
+          </div>
+          {subjects.length === 0 ? (
+            <Card className="p-10 text-center shadow-card">
+              <p className="text-muted-foreground mb-4">
+                아직 등록된 과목이 없어요. 먼저 공부할 과목을 등록해 보세요!
+              </p>
+              <Button variant="hero" onClick={() => setSubjectManagerOpen(true)}>
+                <BookMarked className="h-4 w-4" /> 첫 과목 등록하기
+              </Button>
+            </Card>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {subjects.map((s) => (
+                <SubjectCard
+                  key={s.id}
+                  subject={s}
+                  items={items}
+                  onClick={() => setSelectedSubjectId(s.id)}
+                />
+              ))}
+            </div>
+          )}
         </section>
 
         <div className="grid lg:grid-cols-3 gap-6">
@@ -253,6 +333,8 @@ const Index = () => {
             <SubjectProgress items={items} />
           </div>
         </div>
+          </>
+        )}
       </main>
 
       <StudyForm
@@ -261,6 +343,7 @@ const Index = () => {
         onSave={handleSave}
         editing={editing}
         subjects={subjects}
+        fixedSubject={selectedSubject?.name}
         onManageSubjects={() => {
           setFormOpen(false);
           setSubjectManagerOpen(true);
