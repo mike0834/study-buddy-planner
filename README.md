@@ -27,7 +27,7 @@
 - **테스트**: Vitest, Testing Library
 - **그 외**: date-fns, Zod, Recharts
 
-## 실행 방법
+## 실행 방법 (아직 아님.)
 
 ```bash
 # 1. 저장소 클론
