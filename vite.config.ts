@@ -4,6 +4,8 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // GitHub Pages 배포 경로 (https://mike0834.github.io/study-buddy-planner/)
+  base: "/study-buddy-planner/",
   server: {
     host: "::",
     port: 8080,
