@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, BookOpen, BookMarked, ArrowLeft, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Plus, BookOpen, BookMarked, Trophy, ArrowLeft, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -172,9 +173,16 @@ const Index = () => {
               <p className="text-xs text-muted-foreground">에빙하우스 망각곡선 기반 스마트 복습 관리</p>
             </div>
           </div>
-          <Button variant="outline" onClick={() => setSubjectManagerOpen(true)}>
-            <BookMarked className="h-4 w-4" /> 과목 관리
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline">
+              <Link to="/quiz">
+                <Trophy className="h-4 w-4" /> 복습 퀴즈
+              </Link>
+            </Button>
+            <Button variant="outline" onClick={() => setSubjectManagerOpen(true)}>
+              <BookMarked className="h-4 w-4" /> 과목 관리
+            </Button>
+          </div>
         </div>
       </header>
 
