@@ -16,6 +16,7 @@ import { FeedbackPanel } from "@/components/planner/FeedbackPanel";
 import { ReviewCompleteDialog } from "@/components/planner/ReviewCompleteDialog";
 import { SubjectManager, subjectColorClass } from "@/components/planner/SubjectManager";
 import { SubjectCard } from "@/components/planner/SubjectCard";
+import { StudyStatisticsDashboard } from "@/components/planner/StudyStatisticsDashboard";
 
 const Index = () => {
   const [items, setItems] = useState<StudyItem[]>([]);
@@ -304,6 +305,7 @@ const Index = () => {
                 <TabsTrigger value="today">오늘의 학습</TabsTrigger>
                 <TabsTrigger value="reviews">오늘의 복습</TabsTrigger>
                 <TabsTrigger value="all">전체 목록</TabsTrigger>
+                <TabsTrigger value="stats">학습 통계</TabsTrigger>
               </TabsList>
               <TabsContent value="today" className="mt-0">
                 <TaskList
@@ -333,6 +335,9 @@ const Index = () => {
                   onDelete={handleDelete}
                   emptyMessage="아직 등록된 학습 항목이 없어요."
                 />
+              </TabsContent>
+              <TabsContent value="stats" className="mt-0">
+                <StudyStatisticsDashboard items={items} subjects={subjects} />
               </TabsContent>
             </Tabs>
           </div>
