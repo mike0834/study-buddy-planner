@@ -15,6 +15,7 @@ import { StudyForm } from "@/components/planner/StudyForm";
 import { SubjectProgress } from "@/components/planner/SubjectProgress";
 import { FeedbackPanel } from "@/components/planner/FeedbackPanel";
 import { ReviewCompleteDialog } from "@/components/planner/ReviewCompleteDialog";
+import { StudyTimer } from "@/components/planner/StudyTimer";
 import { SubjectManager, subjectColorClass } from "@/components/planner/SubjectManager";
 import { SubjectCard } from "@/components/planner/SubjectCard";
 import { StudyStatisticsDashboard } from "@/components/planner/StudyStatisticsDashboard";
@@ -29,6 +30,8 @@ const Index = () => {
   const [subjectManagerOpen, setSubjectManagerOpen] = useState(false);
   const [editing, setEditing] = useState<StudyItem | null>(null);
   const [reviewDialogItem, setReviewDialogItem] = useState<StudyItem | null>(null);
+  /** 타이머로 측정된 실제 학습 시간(분). 완료 다이얼로그 기본값으로 전달 */
+  const [pendingMinutes, setPendingMinutes] = useState<number | null>(null);
   /** 현재 들어가 있는 과목 (null이면 홈 화면) */
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
 
@@ -114,6 +117,7 @@ const Index = () => {
     if (!target) return;
     // 완료로 토글 시: 학습/복습 모두 결과 입력 다이얼로그
     if (!target.completed) {
+      setPendingMinutes(null);
       setReviewDialogItem(target);
       return;
     }
@@ -123,7 +127,16 @@ const Index = () => {
     );
   };
 
-  const handleReviewSubmit = (understanding: number, wrongCount: number) => {
+  /** 홈 타이머에서 '학습 완료'를 누르면: 항목이 있으면 측정 시간과 함께 결과 입력 다이얼로그를 연다 */
+  const handleTimerComplete = (itemId: string | null, minutes: number) => {
+    if (!itemId) return; // 자유 학습은 기록 없이 종료 (토스트는 타이머가 처리)
+    const target = items.find((i) => i.id === itemId);
+    if (!target) return;
+    setPendingMinutes(minutes);
+    setReviewDialogItem(target);
+  };
+
+  const handleReviewSubmit = (understanding: number, wrongCount: number, actualMinutes: number) => {
     if (!reviewDialogItem) return;
     const completed: StudyItem = {
       ...reviewDialogItem,
@@ -131,6 +144,7 @@ const Index = () => {
       completedAt: new Date().toISOString(),
       understanding,
       wrongCount,
+      actualMinutes: actualMinutes > 0 ? actualMinutes : undefined,
     };
     setItems((prev) => {
       let next = prev.map((it) => (it.id === completed.id ? completed : it));
@@ -145,6 +159,7 @@ const Index = () => {
       toast.success("복습 완료! 잘하고 있어요.");
     }
     setReviewDialogItem(null);
+    setPendingMinutes(null);
   };
 
   const handleSave = (item: StudyItem) => {
@@ -344,6 +359,12 @@ if (!authUser) {
                 : "오늘 학습량이 부담 없는 수준이에요. 계획대로 진행해 봐요! 👍"}
             </p>
           </Card>
+
+          {/* 학습 타이머 - 스스로 학습 시간을 측정하고 완료 시 실제 시간을 기록 */}
+          <StudyTimer
+            items={todayStudies.filter((i) => !i.completed)}
+            onComplete={handleTimerComplete}
+          />
         </section>
 
         {/* 내 과목 - 과목 카드를 눌러 들어가서 학습 항목을 관리 */}
@@ -452,8 +473,14 @@ if (!authUser) {
       />
       <ReviewCompleteDialog
         open={!!reviewDialogItem}
-        onOpenChange={(o) => !o && setReviewDialogItem(null)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setReviewDialogItem(null);
+            setPendingMinutes(null);
+          }
+        }}
         item={reviewDialogItem}
+        defaultMinutes={pendingMinutes ?? undefined}
         onSubmit={handleReviewSubmit}
       />
     </div>
