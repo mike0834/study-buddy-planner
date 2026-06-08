@@ -1,20 +1,28 @@
 import { Difficulty, StudyItem } from "@/types/study";
 
-export const todayStr = () => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().slice(0, 10);
+// 로컬 시간대 기준 YYYY-MM-DD 문자열로 변환.
+// toISOString()은 UTC로 변환하면서 한국(UTC+9) 등에서 날짜가 하루 밀리는 문제가 있어
+// 로컬 연/월/일 값을 직접 조합한다.
+const toDateStr = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 };
 
+export const todayStr = () => toDateStr(new Date());
+
 export const addDays = (dateStr: string, days: number) => {
-  const d = new Date(dateStr);
+  // "T00:00:00"을 붙여 로컬 자정으로 파싱한다.
+  // (date-only 문자열은 UTC 자정으로 파싱돼 시간대에 따라 날짜가 밀릴 수 있음)
+  const d = new Date(`${dateStr}T00:00:00`);
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return toDateStr(d);
 };
 
 export const daysUntil = (dateStr: string) => {
-  const today = new Date(todayStr());
-  const target = new Date(dateStr);
+  const today = new Date(`${todayStr()}T00:00:00`);
+  const target = new Date(`${dateStr}T00:00:00`);
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 };
 
