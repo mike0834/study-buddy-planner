@@ -92,6 +92,11 @@ const Index = () => {
   // 오늘 항목을 학습(원학습)과 복습으로 분리
   const todayStudies = useMemo(() => todays.filter((i) => i.kind !== "review"), [todays]);
   const todayReviews = useMemo(() => todays.filter((i) => i.kind === "review"), [todays]);
+  // 타이머 대상: 오늘의 미완료 학습 + 복습 (복습이 먼저 끝나도록 위로)
+  const todayPending = useMemo(
+    () => todays.filter((i) => !i.completed).sort((a, b) => (a.kind === "review" ? -1 : 1) - (b.kind === "review" ? -1 : 1)),
+    [todays],
+  );
   const todayDone = todays.filter((i) => i.completed).length;
   const todayRemaining = todays.length - todayDone;
   const totalDone = items.filter((i) => i.completed).length;
@@ -297,7 +302,7 @@ if (!authUser) {
           <>
         {/* 학습 타이머 - 최상단 배치로 가장 먼저 눈에 띄게 (실제 학습 시간 측정·기록) */}
         <StudyTimer
-          items={todayStudies.filter((i) => !i.completed)}
+          items={todayPending}
           onComplete={handleTimerComplete}
         />
 
