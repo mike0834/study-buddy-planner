@@ -75,13 +75,9 @@ export const generateReviewDates = ({ baseDate, examDate, difficulty }: Generate
   const result: { stage: number; date: string }[] = [];
   for (let i = 0; i < offsets.length; i++) {
     const date = addDays(baseDate, offsets[i]);
-    if (examDate && date > examDate) {
-      // 시험 임박 → 압축 복습: 시험 전날에 통합 복습 1개만 추가
-      if (!result.some((r) => r.date === addDays(examDate, -1))) {
-        result.push({ stage: i + 2, date: addDays(examDate, -1) });
-      }
-      break;
-    }
+    // 시험일을 넘는 복습은 제외한다.
+    // (한 날짜로 압축하면 망각곡선 간격이 무너지므로 압축하지 않는다)
+    if (examDate && date > examDate) break;
     result.push({ stage: i + 2, date });
   }
   return result;
@@ -305,4 +301,205 @@ export const buildFeedback = (items: StudyItem[]): { tone: "info" | "warn" | "su
   if (done / total >= 0.5)
     return { tone: "success", message: `오늘 ${done}/${total} 완료! 좋은 흐름을 유지하고 있어요.` };
   return { tone: "info", message: "차근차근 시작해 봐요. 첫 항목부터 가볍게 진행해보세요." };
+};
+
+// ============================================================
+//  부담 없는 계획 재구성(Re-Plan) 엔진
+//  핵심: 계획을 못 지켰을 때 미완료를 쌓아두지 않고,
+//        시험일까지 남은 기간에 하루 부담이 적도록 다시 분배한다.
+// ============================================================
+
+/** 하루 학습량 권장 한도(분). 이를 넘으면 핵심 단원만 남기고 다음 날로 분산한다. */
+export const DAILY_CAP_MINUTES = 120;
+
+// ---------- (A) 자주 미루는 과목 = "위험 과목" 판정 ----------
+export type RiskLevel = "safe" | "caution" | "danger";
+
+export interface SubjectRisk {
+  subject: string;
+  level: RiskLevel;
+  score: number;
+  postponeTotal: number;  // 총 미룬 횟수
+  postponedItems: number; // 한 번이라도 미룬 항목 수
+  total: number;
+  completionRate: number; // 0~1
+  reasons: string[];
+}
+
+const RISK_LABEL: Record<RiskLevel, string> = { safe: "안전", caution: "주의", danger: "위험" };
+export const riskLabel = (l: RiskLevel) => RISK_LABEL[l];
+
+/** 미룬 횟수·완료율·난이도로 과목 위험도를 판정한다. */
+export const computeSubjectRisk = (items: StudyItem[], subject: string): SubjectRisk => {
+  const today = todayStr();
+  const list = items.filter((i) => i.subject === subject);
+  const total = list.length;
+  // 완료율은 "이미 했어야 할" 항목(오늘까지 예정이거나 완료된 것)만으로 계산한다.
+  // (아직 안 온 미래 예정 항목까지 분모에 넣으면 새 항목이 위험으로 오판됨)
+  const due = list.filter((i) => i.completed || i.scheduledDate <= today);
+  const dueCompleted = due.filter((i) => i.completed).length;
+  const completionRate = due.length ? dueCompleted / due.length : 1;
+  const postponeTotal = list.reduce((a, i) => a + i.postponeCount, 0);
+  const postponedItems = list.filter((i) => i.postponeCount > 0).length;
+  const hardCount = list.filter((i) => i.difficulty === "어려움").length;
+
+  let score = 0;
+  const reasons: string[] = [];
+  if (postponedItems > 0) {
+    score += postponeTotal * 2 + postponedItems * 3;
+    reasons.push(`${total}개 중 ${postponedItems}개를 미뤘어요(총 ${postponeTotal}회)`);
+  }
+  if (due.length >= 3 && completionRate < 0.5) {
+    score += 6;
+    reasons.push(`완료율이 ${Math.round(completionRate * 100)}%로 낮아요`);
+  } else if (due.length >= 3 && completionRate < 0.7) {
+    score += 3;
+  }
+  if (hardCount > 0) score += hardCount;
+
+  const level: RiskLevel = score >= 10 ? "danger" : score >= 5 ? "caution" : "safe";
+  return { subject, level, score, postponeTotal, postponedItems, total, completionRate, reasons };
+};
+
+/** 큰 학습 덩어리를 짧은 단위(기본 25분)로 쪼갠다. 위험 과목의 미루기 방지용. */
+export const splitIntoChunks = (item: StudyItem, chunkMinutes = 25): StudyItem[] => {
+  if (item.estimatedMinutes <= chunkMinutes * 1.5) return [item];
+  const count = Math.ceil(item.estimatedMinutes / chunkMinutes);
+  const per = Math.ceil(item.estimatedMinutes / count);
+  return Array.from({ length: count }, (_, i) => ({
+    ...item,
+    id: crypto.randomUUID(),
+    content: `${item.content} (${i + 1}/${count})`,
+    estimatedMinutes: per,
+  }));
+};
+
+// ---------- (B) 시험 임박 → 우선순위 자동 상승 ----------
+/** 기본 우선순위에 시험 임박 가중을 더한 재배치용 점수. (높을수록 먼저) */
+export const replanPriority = (item: StudyItem): number => {
+  let score = priorityScore(item);
+  if (item.examDate) {
+    const d = daysUntil(item.examDate);
+    if (d >= 0) score += Math.max(0, 24 - d * 2); // 시험이 가까울수록 가산
+  }
+  return score;
+};
+
+// ---------- (C) 시험일 기반 학습 단계 ----------
+export type ExamPhase = "concept" | "practice" | "memorize" | "done" | "none";
+export interface ExamPhaseInfo {
+  phase: ExamPhase;
+  label: string;
+  hint: string;
+  emoji: string;
+  dday: number;
+}
+
+/** D-8↑ 개념 / D-7~4 문제풀이 / D-3↓ 오답·암기 */
+export const getExamPhase = (examDate?: string): ExamPhaseInfo => {
+  if (!examDate) return { phase: "none", label: "자유 학습", hint: "시험일을 정하면 단계별 추천이 켜져요.", emoji: "📘", dday: Infinity };
+  const d = daysUntil(examDate);
+  if (d < 0) return { phase: "done", label: "시험 종료", hint: "수고했어요!", emoji: "✅", dday: d };
+  if (d <= 3) return { phase: "memorize", label: "오답·핵심암기", hint: "오답 정리와 핵심 암기 위주로!", emoji: "🔥", dday: d };
+  if (d <= 7) return { phase: "practice", label: "문제풀이", hint: "개념보다 문제풀이 비중을 높이세요.", emoji: "✍️", dday: d };
+  return { phase: "concept", label: "개념 정리", hint: "기초 개념을 탄탄히 다질 때예요.", emoji: "📖", dday: d };
+};
+
+/** 과목에서 가장 임박한 시험 단계. */
+export const getSubjectPhase = (items: StudyItem[], subject: string): ExamPhaseInfo => {
+  const exams = items
+    .filter((i) => i.subject === subject && !i.completed && i.examDate && daysUntil(i.examDate) >= 0)
+    .map((i) => i.examDate!)
+    .sort();
+  return getExamPhase(exams[0]);
+};
+
+// ---------- (D) 핵심: 계획 재구성 ----------
+export interface ReplanSummary {
+  movedCount: number; // 날짜가 바뀐 항목 수
+  splitCount: number; // 쪼개진 항목 수
+  changed: boolean;
+}
+
+/**
+ * 미완료 "원학습(study)" 항목을 누적하지 않고 시험일까지 하루 한도(cap) 내에서 다시 분배한다.
+ *  ※ 복습(review) 항목은 에빙하우스 망각곡선 차수별 날짜가 핵심이므로 절대 옮기지 않는다.
+ *     (복습 일정 조정은 adjustReviewsAfterCompletion이 담당)
+ *  1) 자주 미루는 과목의 큰 원학습 항목은 작은 단위로 쪼갠다.
+ *  2) 핵심 우선순위(시험 임박·난이도·미룸)가 높은 항목부터
+ *  3) 오늘부터 하루 cap을 채우며 배치, 한도를 넘으면 다음 날로 미룬다.
+ *     (단, 시험/마감일은 넘기지 않으며, 복습 학습량은 그날 예산에 미리 반영한다)
+ */
+export const replanSchedule = (
+  input: StudyItem[],
+  cap = DAILY_CAP_MINUTES,
+): { items: StudyItem[]; summary: ReplanSummary } => {
+  const today = todayStr();
+  const subjects = Array.from(new Set(input.map((i) => i.subject)));
+  const risky = new Set(subjects.filter((s) => computeSubjectRisk(input, s).level !== "safe"));
+
+  // 재배치 대상 = 밀린(오늘 이전 예정) "원학습"만.
+  // 미래 예정 원학습/복습/완료 항목은 사용자가 정한 날짜를 그대로 둔다.
+  const isDueStudy = (i: StudyItem) =>
+    !i.completed && i.kind !== "review" && i.scheduledDate <= today;
+
+  // 1) 위험 과목의 밀린 큰 원학습만 작은 단위로 쪼갠다.
+  let splitCount = 0;
+  const working: StudyItem[] = [];
+  for (const it of input) {
+    if (isDueStudy(it) && risky.has(it.subject) && it.estimatedMinutes > 40) {
+      const chunks = splitIntoChunks(it, 25);
+      if (chunks.length > 1) splitCount += chunks.length;
+      working.push(...chunks);
+    } else {
+      working.push(it);
+    }
+  }
+
+  // 날짜를 보존할 항목들(복습 + 미래 예정 원학습 + 완료)
+  const fixed = working.filter((i) => !isDueStudy(i));
+  // 재배치 대상: 밀린 원학습, 핵심 우선순위로 정렬
+  const dueStudies = working
+    .filter((i) => isDueStudy(i))
+    .sort((a, b) => replanPriority(b) - replanPriority(a));
+
+  // 2) 하루 cap 내 그리디 배치
+  //    고정 항목(복습/미래 학습)의 학습량을 미리 그날 예산에 반영해 그 위에 쌓는다.
+  let movedCount = 0;
+  const dayLoad: Record<string, number> = {};
+  for (const f of fixed) {
+    if (!f.completed) dayLoad[f.scheduledDate] = (dayLoad[f.scheduledDate] || 0) + f.estimatedMinutes;
+  }
+  const placed = dueStudies.map((item) => {
+    const limit = item.examDate || item.deadline; // 이 날짜는 넘지 않음
+    let day = today;
+    while ((dayLoad[day] || 0) + item.estimatedMinutes > cap && day < limit) {
+      day = addDays(day, 1);
+    }
+    dayLoad[day] = (dayLoad[day] || 0) + item.estimatedMinutes;
+    if (item.scheduledDate !== day) {
+      movedCount += 1;
+      return { ...item, scheduledDate: day };
+    }
+    return item;
+  });
+
+  return {
+    items: [...placed, ...fixed],
+    summary: { movedCount, splitCount, changed: movedCount > 0 || splitCount > 0 },
+  };
+};
+
+// ---------- (E) 오늘 학습량 게이지용 ----------
+export const computeTodayWorkload = (items: StudyItem[], cap = DAILY_CAP_MINUTES) => {
+  const today = todayStr();
+  const assignedMinutes = items
+    .filter((i) => i.scheduledDate === today && !i.completed)
+    .reduce((a, i) => a + i.estimatedMinutes, 0);
+  return {
+    assignedMinutes,
+    cap,
+    pct: Math.min(100, Math.round((assignedMinutes / cap) * 100)),
+    over: assignedMinutes > cap,
+  };
 };

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Clock, Flame, RotateCcw, BookOpen } from "lucide-react";
 import { StudyItem } from "@/types/study";
-import { daysUntil, priorityScore, todayStr } from "@/lib/adaptive";
+import { daysUntil, getExamPhase, priorityScore, todayStr } from "@/lib/adaptive";
 
 interface Props {
   items: StudyItem[];
@@ -67,15 +67,29 @@ export const TaskList = ({ items, onToggle, onEdit, onDelete, emptyMessage, show
                       <RotateCcw className="h-3 w-3 mr-1" /> 복습 {item.reviewStage}차
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="border-accent/40 text-accent-foreground">
+                    <Badge variant="outline" className="border-success/40 text-success">
                       <BookOpen className="h-3 w-3 mr-1" /> 학습
                     </Badge>
                   )}
-                  {item.examDate && (
-                    <Badge variant="outline" className="text-xs">
-                      시험 {item.examDate}
-                    </Badge>
-                  )}
+                  {item.examDate && (() => {
+                    const ph = getExamPhase(item.examDate);
+                    if (item.completed || ph.phase === "none" || ph.phase === "done")
+                      return <Badge variant="outline" className="text-xs">시험 {item.examDate}</Badge>;
+                    return (
+                      <Badge
+                        variant="outline"
+                        className={
+                          ph.phase === "memorize"
+                            ? "text-destructive border-destructive/40"
+                            : ph.phase === "practice"
+                            ? "text-warning border-warning/40"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {ph.emoji} D-{ph.dday} · {ph.label}
+                      </Badge>
+                    );
+                  })()}
                   {isTopPriority && (
                     <Badge className="gradient-primary text-primary-foreground border-0">
                       <Flame className="h-3 w-3 mr-1" /> 최우선
