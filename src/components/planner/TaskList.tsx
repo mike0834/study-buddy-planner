@@ -107,8 +107,13 @@ export const TaskList = ({ items, onToggle, onEdit, onDelete, emptyMessage, show
                 <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                   <span className={dl.cls}>📅 {item.deadline} · {dl.text}</span>
                   <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> {item.estimatedMinutes}분
+                    <Clock className="h-3 w-3" /> 예상 {item.estimatedMinutes}분
                   </span>
+                  {item.actualMinutes != null && (
+                    <span className="flex items-center gap-1 text-success font-medium">
+                      <Clock className="h-3 w-3" /> 실제 {item.actualMinutes}분
+                    </span>
+                  )}
                   {item.scheduledDate !== today && (
                     <span>예정: {item.scheduledDate}</span>
                   )}
