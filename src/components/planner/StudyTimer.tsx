@@ -79,8 +79,8 @@ export const StudyTimer = ({ items, onComplete }: Props) => {
   const handleComplete = () => {
     const ms = elapsedOf(timer);
     const minutes = Math.max(1, Math.round(ms / 60000));
-    if (ms < 30000) {
-      toast.info("아직 측정된 시간이 거의 없어요. 타이머를 시작해 주세요.");
+    if (ms <= 0) {
+      toast.info("아직 측정된 시간이 없어요. 타이머를 시작해 주세요.");
       return;
     }
     if (timer.itemId) {
@@ -159,7 +159,7 @@ export const StudyTimer = ({ items, onComplete }: Props) => {
                   <Play className="h-5 w-5" /> {elapsed > 0 ? "이어서 시작" : "시작"}
                 </Button>
               )}
-              <Button size="lg" variant="default" className="flex-1 min-w-[120px]" onClick={handleComplete} disabled={elapsed < 30000}>
+              <Button size="lg" variant="default" className="flex-1 min-w-[120px]" onClick={handleComplete} disabled={elapsed === 0}>
                 <CheckCircle2 className="h-5 w-5" /> 학습 완료
               </Button>
               <Button size="lg" variant="ghost" onClick={handleReset} disabled={elapsed === 0}>
