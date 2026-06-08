@@ -93,64 +93,81 @@ export const StudyTimer = ({ items, onComplete }: Props) => {
   };
 
   return (
-    <Card className="mt-4 p-5 shadow-card">
-      <div className="flex items-center gap-2 mb-3">
-        <div className={`p-2 rounded-lg ${running ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-          <Timer className="h-4 w-4" />
-        </div>
-        <span className="text-sm font-semibold">학습 타이머</span>
-        {running && (
-          <span className="flex items-center gap-1 text-xs text-primary">
-            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" /> 측정 중
-          </span>
-        )}
-      </div>
+    <Card
+      className={`relative overflow-hidden border-2 shadow-elegant transition-colors ${
+        running ? "border-primary/50" : "border-primary/15"
+      }`}
+    >
+      {/* 배경 그라데이션 */}
+      <div className={`absolute inset-0 -z-10 ${running ? "gradient-primary opacity-[0.08]" : "gradient-soft"}`} />
 
-      <div className="grid sm:grid-cols-[1fr_auto] gap-4 items-center">
-        <div className="space-y-3">
-          <Select value={timer.itemId ?? FREE} onValueChange={handleSelect} disabled={running}>
-            <SelectTrigger>
-              <SelectValue placeholder="무엇을 공부할까요?" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={FREE}>⏱️ 자유 학습 (항목 없이 시간만 측정)</SelectItem>
-              {items.map((i) => (
-                <SelectItem key={i.id} value={i.id}>
-                  {i.subject} · {i.content}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {selected && (
-            <p className="text-xs text-muted-foreground">
-              예상 시간 {selected.estimatedMinutes}분 · 완료하면 실제 시간이 기록돼요
-            </p>
+      <div className="p-6 sm:p-8">
+        <div className="flex items-center gap-2 mb-5">
+          <div className={`p-2 rounded-xl ${running ? "gradient-primary text-primary-foreground shadow-elegant" : "bg-primary/10 text-primary"}`}>
+            <Timer className="h-5 w-5" />
+          </div>
+          <span className="text-base font-bold">학습 타이머</span>
+          {running && (
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-primary ml-1">
+              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" /> 측정 중
+            </span>
           )}
         </div>
 
-        <div className="text-center">
-          <div className={`font-mono font-bold tabular-nums leading-none ${running ? "text-primary" : ""} text-4xl`}>
-            {fmt(elapsed)}
+        <div className="grid md:grid-cols-[1fr_auto] gap-6 md:gap-8 items-center">
+          {/* 큰 시간 표시 */}
+          <div className="order-1 md:order-2 text-center md:text-right">
+            <div
+              className={`font-mono font-bold tabular-nums leading-none text-6xl sm:text-7xl ${
+                running ? "text-gradient" : "text-foreground/80"
+              }`}
+            >
+              {fmt(elapsed)}
+            </div>
+            {selected ? (
+              <p className="text-xs text-muted-foreground mt-2">
+                예상 {selected.estimatedMinutes}분 · 완료 시 실제 시간 자동 기록
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-2">자유 학습 · 집중한 시간만 측정해요</p>
+            )}
+          </div>
+
+          {/* 대상 선택 + 컨트롤 */}
+          <div className="order-2 md:order-1 space-y-3 w-full">
+            <Select value={timer.itemId ?? FREE} onValueChange={handleSelect} disabled={running}>
+              <SelectTrigger className="h-11 text-base">
+                <SelectValue placeholder="무엇을 공부할까요?" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={FREE}>⏱️ 자유 학습 (항목 없이 시간만 측정)</SelectItem>
+                {items.map((i) => (
+                  <SelectItem key={i.id} value={i.id}>
+                    {i.subject} · {i.content}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="flex flex-wrap gap-2">
+              {running ? (
+                <Button size="lg" variant="outline" className="flex-1 min-w-[120px]" onClick={handlePause}>
+                  <Pause className="h-5 w-5" /> 일시정지
+                </Button>
+              ) : (
+                <Button size="lg" variant="hero" className="flex-1 min-w-[120px]" onClick={handleStart}>
+                  <Play className="h-5 w-5" /> {elapsed > 0 ? "이어서 시작" : "시작"}
+                </Button>
+              )}
+              <Button size="lg" variant="default" className="flex-1 min-w-[120px]" onClick={handleComplete} disabled={elapsed < 30000}>
+                <CheckCircle2 className="h-5 w-5" /> 학습 완료
+              </Button>
+              <Button size="lg" variant="ghost" onClick={handleReset} disabled={elapsed === 0}>
+                <RotateCcw className="h-5 w-5" /> 초기화
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mt-4">
-        {running ? (
-          <Button variant="outline" className="flex-1" onClick={handlePause}>
-            <Pause className="h-4 w-4" /> 일시정지
-          </Button>
-        ) : (
-          <Button variant="hero" className="flex-1" onClick={handleStart}>
-            <Play className="h-4 w-4" /> {elapsed > 0 ? "이어서 시작" : "시작"}
-          </Button>
-        )}
-        <Button variant="ghost" onClick={handleReset} disabled={elapsed === 0}>
-          <RotateCcw className="h-4 w-4" /> 초기화
-        </Button>
-        <Button variant="default" onClick={handleComplete} disabled={elapsed < 30000}>
-          <CheckCircle2 className="h-4 w-4" /> 학습 완료
-        </Button>
       </div>
     </Card>
   );
