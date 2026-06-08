@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, BookOpen, BookMarked, Trophy, ArrowLeft, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw } from "lucide-react";
+import { Plus, BookOpen, BookMarked, Trophy, Swords, ArrowLeft, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -201,17 +201,20 @@ if (!authUser) {
                 <Trophy className="h-4 w-4" /> 복습 퀴즈
               </Link>
             </Button>
-<div className="flex items-center gap-2">
-  <span className="hidden sm:inline text-sm text-muted-foreground">
-    {authUser.name}님
-  </span>
-  <Button variant="outline" onClick={() => setSubjectManagerOpen(true)}>
-    <BookMarked className="h-4 w-4" /> 과목 관리
-  </Button>
-  <Button variant="ghost" onClick={handleLogout}>
-    로그아웃
-  </Button>
-</div>       
+            <Button asChild variant="hero">
+              <Link to="/party-siege">
+                <Swords className="h-4 w-4" /> 파티 공성전
+              </Link>
+            </Button>
+            <span className="hidden sm:inline text-sm text-muted-foreground">
+              {authUser.name}님
+            </span>
+            <Button variant="outline" onClick={() => setSubjectManagerOpen(true)}>
+              <BookMarked className="h-4 w-4" /> 과목 관리
+            </Button>
+            <Button variant="ghost" onClick={handleLogout}>
+              로그아웃
+            </Button>
           </div>
         </div>
       </header>
