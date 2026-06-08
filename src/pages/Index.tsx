@@ -295,6 +295,12 @@ if (!authUser) {
         ) : (
           /* ===== 홈 화면 ===== */
           <>
+        {/* 학습 타이머 - 최상단 배치로 가장 먼저 눈에 띄게 (실제 학습 시간 측정·기록) */}
+        <StudyTimer
+          items={todayStudies.filter((i) => !i.completed)}
+          onComplete={handleTimerComplete}
+        />
+
         <section>
           <h2 className="text-2xl font-bold mb-1">
             오늘의 <span className="text-gradient">학습 대시보드</span>
@@ -359,12 +365,6 @@ if (!authUser) {
                 : "오늘 학습량이 부담 없는 수준이에요. 계획대로 진행해 봐요! 👍"}
             </p>
           </Card>
-
-          {/* 학습 타이머 - 스스로 학습 시간을 측정하고 완료 시 실제 시간을 기록 */}
-          <StudyTimer
-            items={todayStudies.filter((i) => !i.completed)}
-            onComplete={handleTimerComplete}
-          />
         </section>
 
         {/* 내 과목 - 과목 카드를 눌러 들어가서 학습 항목을 관리 */}
