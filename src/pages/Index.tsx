@@ -40,11 +40,7 @@ const Index = () => {
     const { items: replanned, summary } = replanSchedule(rolled);
     if (changed || summary.changed) {
       saveItems(replanned);
-      toast.info(
-        summary.splitCount > 0
-          ? "밀린 학습을 시험일까지 다시 분배하고, 자주 미룬 과목은 작은 단위로 쪼갰어요."
-          : "밀린 학습량을 시험일까지 부담 없이 다시 분배했어요.",
-      );
+      toast.info("밀린 학습량을 시험일까지 부담 없이 다시 분배했어요.");
     }
     saveMeta({ ...meta, lastRolloverDate: todayStr() });
     setItems(replanned);
@@ -102,8 +98,6 @@ const Index = () => {
     setItems((prev) => {
       const { items: next, summary } = replanSchedule(prev);
       if (!summary.changed) toast.info("이미 부담 없이 잘 분배돼 있어요. 👍");
-      else if (summary.splitCount > 0)
-        toast.success("시험일까지 다시 분배하고, 자주 미룬 과목은 작은 단위로 쪼갰어요.");
       else toast.success(`${summary.movedCount}개 항목을 시험일까지 부담 없이 재배치했어요.`);
       return next;
     });

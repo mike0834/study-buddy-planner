@@ -63,21 +63,19 @@ describe("계획 재구성 엔진 (replanSchedule)", () => {
     expect(nearToday).toBeGreaterThanOrEqual(farToday);
   });
 
-  it("자주 미루는 과목의 큰 항목은 작은 단위로 쪼개서 배치한다", () => {
+  it("재구성 시 학습 항목을 작은 단위로 쪼개지 않는다 (자동 분할 비활성화)", () => {
     const exam = addDays(todayStr(), 10);
-    // 3개 모두 미룬 위험 과목 + 큰 항목(90분)
     const items = [
       mk({ subject: "위험과목", estimatedMinutes: 90, postponeCount: 2, examDate: exam, deadline: exam }),
       mk({ subject: "위험과목", estimatedMinutes: 30, postponeCount: 1, examDate: exam, deadline: exam }),
       mk({ subject: "위험과목", estimatedMinutes: 30, postponeCount: 1, examDate: exam, deadline: exam }),
     ];
-    expect(computeSubjectRisk(items, "위험과목").level).toBe("danger");
     const { items: out, summary } = replanSchedule(items, 120);
-    expect(summary.splitCount).toBeGreaterThan(0);
-    // 90분짜리가 분할되어 25분 내외 조각으로 바뀜
-    const big = out.filter((i) => i.subject === "위험과목" && i.estimatedMinutes > 40);
-    expect(big.length).toBe(0);
-    expect(out.some((i) => /\(\d+\/\d+\)/.test(i.content))).toBe(true);
+    // 쪼개지 않으므로 분할 수는 0, 90분짜리는 그대로 유지, (n/m) 라벨도 없음
+    expect(summary.splitCount).toBe(0);
+    expect(out.some((i) => i.estimatedMinutes === 90)).toBe(true);
+    expect(out.some((i) => /\(\d+\/\d+\)/.test(i.content))).toBe(false);
+    expect(out.length).toBe(items.length);
   });
 
   it("복습(review) 항목의 망각곡선 차수별 날짜는 절대 옮기지 않는다", () => {

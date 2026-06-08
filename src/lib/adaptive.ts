@@ -435,26 +435,15 @@ export const replanSchedule = (
   cap = DAILY_CAP_MINUTES,
 ): { items: StudyItem[]; summary: ReplanSummary } => {
   const today = todayStr();
-  const subjects = Array.from(new Set(input.map((i) => i.subject)));
-  const risky = new Set(subjects.filter((s) => computeSubjectRisk(input, s).level !== "safe"));
 
   // 재배치 대상 = 밀린(오늘 이전 예정) "원학습"만.
   // 미래 예정 원학습/복습/완료 항목은 사용자가 정한 날짜를 그대로 둔다.
   const isDueStudy = (i: StudyItem) =>
     !i.completed && i.kind !== "review" && i.scheduledDate <= today;
 
-  // 1) 위험 과목의 밀린 큰 원학습만 작은 단위로 쪼갠다.
-  let splitCount = 0;
-  const working: StudyItem[] = [];
-  for (const it of input) {
-    if (isDueStudy(it) && risky.has(it.subject) && it.estimatedMinutes > 40) {
-      const chunks = splitIntoChunks(it, 25);
-      if (chunks.length > 1) splitCount += chunks.length;
-      working.push(...chunks);
-    } else {
-      working.push(it);
-    }
-  }
+  // 학습 항목은 쪼개지 않고 그대로 둔다. (자동 분할 기능 제거)
+  const splitCount = 0;
+  const working: StudyItem[] = [...input];
 
   // 날짜를 보존할 항목들(복습 + 미래 예정 원학습 + 완료)
   const fixed = working.filter((i) => !isDueStudy(i));
