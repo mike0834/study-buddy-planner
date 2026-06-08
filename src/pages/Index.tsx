@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { StudyItem, Subject } from "@/types/study";
 import { loadItems, loadMeta, loadSubjects, saveItems, saveMeta, saveSubjects } from "@/lib/storage";
-import { adjustReviewsAfterCompletion, buildReviewItems, computeTodayWorkload, DAILY_CAP_MINUTES, replanSchedule, rolloverItems, todayStr } from "@/lib/adaptive";
+import { adjustReviewsAfterCompletion, buildReviewItems, computeTodayWorkload, DAILY_CAP_MINUTES, mergeSplitChunks, replanSchedule, rolloverItems, todayStr } from "@/lib/adaptive";
 import { StatCard } from "@/components/planner/StatCard";
 import { TaskList } from "@/components/planner/TaskList";
 import { StudyForm } from "@/components/planner/StudyForm";
@@ -34,13 +34,19 @@ const Index = () => {
 
   useEffect(() => {
     const loaded = loadItems();
+    // 과거 자동 분할로 쪼개진 (1/3) 등의 항목을 원래대로 다시 합친다 (1회성 정리)
+    const { items: unsplit, merged } = mergeSplitChunks(loaded);
     const meta = loadMeta();
-    const { items: rolled, changed } = rolloverItems(loaded, meta.lastRolloverDate);
+    const { items: rolled, changed } = rolloverItems(unsplit, meta.lastRolloverDate);
     // 미완료를 쌓아두지 않고 시험일까지 부담 없이 재구성
     const { items: replanned, summary } = replanSchedule(rolled);
-    if (changed || summary.changed) {
+    if (merged || changed || summary.changed) {
       saveItems(replanned);
-      toast.info("밀린 학습량을 시험일까지 부담 없이 다시 분배했어요.");
+      toast.info(
+        merged
+          ? "이전에 자동 분할됐던 학습 항목을 하나로 다시 합쳤어요."
+          : "밀린 학습량을 시험일까지 부담 없이 다시 분배했어요.",
+      );
     }
     saveMeta({ ...meta, lastRolloverDate: todayStr() });
     setItems(replanned);

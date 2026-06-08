@@ -5,6 +5,7 @@ import {
   replanSchedule,
   computeSubjectRisk,
   splitIntoChunks,
+  mergeSplitChunks,
   getExamPhase,
   computeTodayWorkload,
   buildReviewItems,
@@ -61,6 +62,27 @@ describe("계획 재구성 엔진 (replanSchedule)", () => {
     const nearToday = out.filter((i) => i.subject === "임박" && i.scheduledDate === todayStr()).length;
     const farToday = out.filter((i) => i.subject === "여유" && i.scheduledDate === todayStr()).length;
     expect(nearToday).toBeGreaterThanOrEqual(farToday);
+  });
+
+  it("과거 분할된 (n/m) 조각을 하나로 다시 합친다", () => {
+    const items = [
+      mk({ content: "3장 풀기 (1/3)", estimatedMinutes: 25 }),
+      mk({ content: "3장 풀기 (2/3)", estimatedMinutes: 25 }),
+      mk({ content: "3장 풀기 (3/3)", estimatedMinutes: 25 }),
+      mk({ content: "다른 항목", estimatedMinutes: 30 }),
+    ];
+    const { items: out, merged } = mergeSplitChunks(items);
+    expect(merged).toBe(true);
+    const recombined = out.filter((i) => i.content === "3장 풀기");
+    expect(recombined.length).toBe(1);
+    expect(recombined[0].estimatedMinutes).toBe(75);
+    expect(out.length).toBe(2); // 합쳐진 1개 + 다른 항목 1개
+    expect(out.some((i) => /\(\d+\/\d+\)/.test(i.content))).toBe(false);
+  });
+
+  it("분할 라벨이 없으면 합치기가 동작하지 않는다 (merged=false)", () => {
+    const items = [mk({ content: "그냥 항목" })];
+    expect(mergeSplitChunks(items).merged).toBe(false);
   });
 
   it("재구성 시 학습 항목을 작은 단위로 쪼개지 않는다 (자동 분할 비활성화)", () => {

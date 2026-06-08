@@ -374,6 +374,37 @@ export const splitIntoChunks = (item: StudyItem, chunkMinutes = 25): StudyItem[]
   }));
 };
 
+/**
+ * 과거 자동 분할로 생긴 "(n/m)" 조각들을 원래 하나의 항목으로 다시 합친다. (1회성 데이터 정리)
+ * 같은 과목·내용·종류·마감/시험일을 가진 조각을 모아 예상 시간을 합치고 라벨을 제거한다.
+ */
+export const mergeSplitChunks = (items: StudyItem[]): { items: StudyItem[]; merged: boolean } => {
+  const labelRe = /\s*\(\d+\/\d+\)\s*$/;
+  if (!items.some((i) => labelRe.test(i.content))) return { items, merged: false };
+
+  const groups = new Map<string, StudyItem>();
+  const result: StudyItem[] = [];
+  for (const it of items) {
+    if (!labelRe.test(it.content)) {
+      result.push(it);
+      continue;
+    }
+    const base = it.content.replace(labelRe, "").trim();
+    const key = `${it.subject}|${base}|${it.kind ?? "study"}|${it.deadline}|${it.examDate ?? ""}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.estimatedMinutes += it.estimatedMinutes;
+      if (it.scheduledDate < existing.scheduledDate) existing.scheduledDate = it.scheduledDate;
+      existing.completed = existing.completed && it.completed; // 모든 조각이 완료일 때만 완료
+    } else {
+      const head: StudyItem = { ...it, content: base };
+      groups.set(key, head);
+      result.push(head);
+    }
+  }
+  return { items: result, merged: true };
+};
+
 // ---------- (B) 시험 임박 → 우선순위 자동 상승 ----------
 /** 기본 우선순위에 시험 임박 가중을 더한 재배치용 점수. (높을수록 먼저) */
 export const replanPriority = (item: StudyItem): number => {
