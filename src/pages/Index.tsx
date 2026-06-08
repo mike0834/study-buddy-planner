@@ -17,8 +17,11 @@ import { ReviewCompleteDialog } from "@/components/planner/ReviewCompleteDialog"
 import { SubjectManager, subjectColorClass } from "@/components/planner/SubjectManager";
 import { SubjectCard } from "@/components/planner/SubjectCard";
 import { StudyStatisticsDashboard } from "@/components/planner/StudyStatisticsDashboard";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { AuthUser, clearAuthUser, loadAuthUser, saveAuthUser } from "@/lib/auth";
 
 const Index = () => {
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [items, setItems] = useState<StudyItem[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [formOpen, setFormOpen] = useState(false);
@@ -49,6 +52,9 @@ const Index = () => {
     setSubjects(next);
     saveSubjects(next);
   };
+  useEffect(() => {
+    setAuthUser(loadAuthUser());
+  }, []);
 
   /** 과목별 학습 항목 수 (과목 삭제 시 경고에 사용) */
   const itemCountBySubject = useMemo(() => {
@@ -160,7 +166,22 @@ const Index = () => {
     setEditing(item);
     setFormOpen(true);
   };
+const handleLogin = (user: AuthUser) => {
+  saveAuthUser(user);
+  setAuthUser(user);
+  toast.success(`${user.name}님, 환영합니다!`);
+  };
 
+const handleLogout = () => {
+  clearAuthUser();
+  setAuthUser(null);
+  toast.info("로그아웃되었습니다.");
+  };
+
+if (!authUser) {
+  return <LoginForm onLogin={handleLogin} />;
+}
+  
   return (
     <div className="min-h-screen gradient-soft">
       <header className="border-b bg-background/70 backdrop-blur-md sticky top-0 z-10">
@@ -180,9 +201,17 @@ const Index = () => {
                 <Trophy className="h-4 w-4" /> 복습 퀴즈
               </Link>
             </Button>
-            <Button variant="outline" onClick={() => setSubjectManagerOpen(true)}>
-              <BookMarked className="h-4 w-4" /> 과목 관리
-            </Button>
+<div className="flex items-center gap-2">
+  <span className="hidden sm:inline text-sm text-muted-foreground">
+    {authUser.name}님
+  </span>
+  <Button variant="outline" onClick={() => setSubjectManagerOpen(true)}>
+    <BookMarked className="h-4 w-4" /> 과목 관리
+  </Button>
+  <Button variant="ghost" onClick={handleLogout}>
+    로그아웃
+  </Button>
+</div>       
           </div>
         </div>
       </header>
