@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, BookOpen, BookMarked, Trophy, Swords, ArrowLeft, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw } from "lucide-react";
+import { Plus, BookOpen, BookMarked, Trophy, Swords, ArrowLeft, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw, Gauge, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { StudyItem, Subject } from "@/types/study";
 import { loadItems, loadMeta, loadSubjects, saveItems, saveMeta, saveSubjects } from "@/lib/storage";
-import { adjustReviewsAfterCompletion, buildReviewItems, rolloverItems, todayStr } from "@/lib/adaptive";
+import { adjustReviewsAfterCompletion, buildReviewItems, computeTodayWorkload, DAILY_CAP_MINUTES, replanSchedule, rolloverItems, todayStr } from "@/lib/adaptive";
 import { StatCard } from "@/components/planner/StatCard";
 import { TaskList } from "@/components/planner/TaskList";
 import { StudyForm } from "@/components/planner/StudyForm";
@@ -35,12 +36,18 @@ const Index = () => {
     const loaded = loadItems();
     const meta = loadMeta();
     const { items: rolled, changed } = rolloverItems(loaded, meta.lastRolloverDate);
-    if (changed) {
-      saveItems(rolled);
-      toast.info("미완료 항목을 오늘로 이동했어요.");
+    // 미완료를 쌓아두지 않고 시험일까지 부담 없이 재구성
+    const { items: replanned, summary } = replanSchedule(rolled);
+    if (changed || summary.changed) {
+      saveItems(replanned);
+      toast.info(
+        summary.splitCount > 0
+          ? "밀린 학습을 시험일까지 다시 분배하고, 자주 미룬 과목은 작은 단위로 쪼갰어요."
+          : "밀린 학습량을 시험일까지 부담 없이 다시 분배했어요.",
+      );
     }
     saveMeta({ ...meta, lastRolloverDate: todayStr() });
-    setItems(rolled);
+    setItems(replanned);
     setSubjects(loadSubjects());
   }, []);
 
@@ -79,12 +86,28 @@ const Index = () => {
 
   const today = todayStr();
   const todays = useMemo(() => items.filter((i) => i.scheduledDate === today), [items, today]);
+  // 오늘 항목을 학습(원학습)과 복습으로 분리
+  const todayStudies = useMemo(() => todays.filter((i) => i.kind !== "review"), [todays]);
   const todayReviews = useMemo(() => todays.filter((i) => i.kind === "review"), [todays]);
   const todayDone = todays.filter((i) => i.completed).length;
   const todayRemaining = todays.length - todayDone;
   const totalDone = items.filter((i) => i.completed).length;
   const overallPct = items.length ? Math.round((totalDone / items.length) * 100) : 0;
   const todayPct = todays.length ? Math.round((todayDone / todays.length) * 100) : 0;
+  // 오늘 학습량(분) vs 하루 권장 한도
+  const workload = useMemo(() => computeTodayWorkload(items), [items]);
+
+  /** 사용자가 직접 계획을 다시 짜고 싶을 때 (못 지킨 날 등) */
+  const handleReplan = () => {
+    setItems((prev) => {
+      const { items: next, summary } = replanSchedule(prev);
+      if (!summary.changed) toast.info("이미 부담 없이 잘 분배돼 있어요. 👍");
+      else if (summary.splitCount > 0)
+        toast.success("시험일까지 다시 분배하고, 자주 미룬 과목은 작은 단위로 쪼갰어요.");
+      else toast.success(`${summary.movedCount}개 항목을 시험일까지 부담 없이 재배치했어요.`);
+      return next;
+    });
+  };
 
   const handleToggle = (id: string) => {
     const target = items.find((i) => i.id === id);
@@ -130,7 +153,8 @@ const Index = () => {
       if (exists) return prev.map((p) => (p.id === item.id ? item : p));
       // 새 학습 항목 → 망각곡선 복습 자동 생성
       const reviews = item.kind === "study" || !item.kind ? buildReviewItems(item) : [];
-      return [...prev, item, ...reviews];
+      // 추가 직후 전체 계획을 시험일까지 부담 없이 재구성
+      return replanSchedule([...prev, item, ...reviews]).items;
     });
     if (!editing && (item.kind === "study" || !item.kind)) {
       toast.success("학습 항목과 망각곡선 복습 일정이 자동 생성됐어요.");
@@ -265,11 +289,11 @@ if (!authUser) {
           </p>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
-              title="오늘 할 일"
-              value={todays.length}
-              subtitle={`완료 ${todayDone} · 남음 ${todayRemaining}`}
+              title="오늘 학습"
+              value={todayStudies.length}
+              subtitle={`완료 ${todayStudies.filter((i) => i.completed).length} · 남음 ${todayStudies.filter((i) => !i.completed).length}`}
               icon={Calendar}
-              progress={todayPct}
+              progress={todayStudies.length ? Math.round((todayStudies.filter((i) => i.completed).length / todayStudies.length) * 100) : 0}
               accent="primary"
             />
             <StatCard
@@ -295,6 +319,31 @@ if (!authUser) {
               accent="success"
             />
           </div>
+
+          {/* 오늘 학습량 게이지 + 계획 다시 짜기 (부담 없는 재구성) */}
+          <Card className="mt-4 p-5 shadow-card">
+            <div className="flex items-center justify-between mb-2 gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className={`p-2 rounded-lg ${workload.over ? "bg-warning/15 text-warning" : "bg-primary/10 text-primary"}`}>
+                  <Gauge className="h-4 w-4" />
+                </div>
+                <span className="text-sm font-semibold">오늘 학습량</span>
+                <span className="text-sm">
+                  <span className={`font-bold ${workload.over ? "text-warning" : "text-primary"}`}>{workload.assignedMinutes}분</span>
+                  <span className="text-muted-foreground"> / 권장 한도 {workload.cap}분</span>
+                </span>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleReplan}>
+                <RefreshCw className="h-4 w-4" /> 계획 다시 짜기
+              </Button>
+            </div>
+            <Progress value={workload.pct} className="h-2.5" />
+            <p className="text-xs text-muted-foreground mt-2">
+              {workload.over
+                ? "오늘 양이 권장 한도를 넘었어요. ‘계획 다시 짜기’로 핵심 단원만 남기고 나머지는 다음 날로 분산해 보세요."
+                : "오늘 학습량이 부담 없는 수준이에요. 계획대로 진행해 봐요! 👍"}
+            </p>
+          </Card>
         </section>
 
         {/* 내 과목 - 과목 카드를 눌러 들어가서 학습 항목을 관리 */}
@@ -334,14 +383,14 @@ if (!authUser) {
           <div className="lg:col-span-2">
             <Tabs defaultValue="today">
               <TabsList className="mb-4">
-                <TabsTrigger value="today">오늘의 학습</TabsTrigger>
-                <TabsTrigger value="reviews">오늘의 복습</TabsTrigger>
+                <TabsTrigger value="today">오늘의 학습 {todayStudies.length > 0 && `(${todayStudies.length})`}</TabsTrigger>
+                <TabsTrigger value="reviews">오늘의 복습 {todayReviews.length > 0 && `(${todayReviews.length})`}</TabsTrigger>
                 <TabsTrigger value="all">전체 목록</TabsTrigger>
                 <TabsTrigger value="stats">학습 통계</TabsTrigger>
               </TabsList>
               <TabsContent value="today" className="mt-0">
                 <TaskList
-                  items={todays}
+                  items={todayStudies}
                   onToggle={handleToggle}
                   onEdit={openEdit}
                   onDelete={handleDelete}
