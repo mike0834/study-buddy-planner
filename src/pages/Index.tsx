@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, BookOpen, BookMarked, Trophy, ArrowLeft, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw } from "lucide-react";
+import { Plus, BookOpen, BookMarked, Trophy, Swords, ArrowLeft, CheckCircle2, ListTodo, TrendingUp, Calendar, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -178,6 +178,11 @@ const Index = () => {
             <Button asChild variant="outline">
               <Link to="/quiz">
                 <Trophy className="h-4 w-4" /> 복습 퀴즈
+              </Link>
+            </Button>
+            <Button asChild variant="hero">
+              <Link to="/party-siege">
+                <Swords className="h-4 w-4" /> 파티 공성전
               </Link>
             </Button>
             <Button variant="outline" onClick={() => setSubjectManagerOpen(true)}>
