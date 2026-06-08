@@ -143,7 +143,7 @@ export const StudyTimer = ({ items, onComplete }: Props) => {
                 <SelectItem value={FREE}>⏱️ 자유 학습 (항목 없이 시간만 측정)</SelectItem>
                 {items.map((i) => (
                   <SelectItem key={i.id} value={i.id}>
-                    {i.subject} · {i.content}
+                    {i.kind === "review" ? `🔄 복습${i.reviewStage ? ` ${i.reviewStage}차` : ""}` : "📖 학습"} · {i.subject} · {i.content}
                   </SelectItem>
                 ))}
               </SelectContent>
