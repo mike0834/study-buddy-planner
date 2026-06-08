@@ -15,6 +15,7 @@ import { StudyForm } from "@/components/planner/StudyForm";
 import { SubjectProgress } from "@/components/planner/SubjectProgress";
 import { FeedbackPanel } from "@/components/planner/FeedbackPanel";
 import { ReviewCompleteDialog } from "@/components/planner/ReviewCompleteDialog";
+import { StudyTimer } from "@/components/planner/StudyTimer";
 import { SubjectManager, subjectColorClass } from "@/components/planner/SubjectManager";
 import { SubjectCard } from "@/components/planner/SubjectCard";
 import { StudyStatisticsDashboard } from "@/components/planner/StudyStatisticsDashboard";
@@ -29,6 +30,8 @@ const Index = () => {
   const [subjectManagerOpen, setSubjectManagerOpen] = useState(false);
   const [editing, setEditing] = useState<StudyItem | null>(null);
   const [reviewDialogItem, setReviewDialogItem] = useState<StudyItem | null>(null);
+  /** 타이머로 측정된 실제 학습 시간(분). 완료 다이얼로그 기본값으로 전달 */
+  const [pendingMinutes, setPendingMinutes] = useState<number | null>(null);
   /** 현재 들어가 있는 과목 (null이면 홈 화면) */
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
 
@@ -91,6 +94,11 @@ const Index = () => {
   // 오늘 항목을 학습(원학습)과 복습으로 분리
   const todayStudies = useMemo(() => todays.filter((i) => i.kind !== "review"), [todays]);
   const todayReviews = useMemo(() => todays.filter((i) => i.kind === "review"), [todays]);
+  // 타이머 대상: 오늘의 미완료 학습 + 복습 (복습이 먼저 끝나도록 위로)
+  const todayPending = useMemo(
+    () => todays.filter((i) => !i.completed).sort((a, b) => (a.kind === "review" ? -1 : 1) - (b.kind === "review" ? -1 : 1)),
+    [todays],
+  );
   const todayDone = todays.filter((i) => i.completed).length;
   const todayRemaining = todays.length - todayDone;
   const totalDone = items.filter((i) => i.completed).length;
@@ -114,6 +122,7 @@ const Index = () => {
     if (!target) return;
     // 완료로 토글 시: 학습/복습 모두 결과 입력 다이얼로그
     if (!target.completed) {
+      setPendingMinutes(null);
       setReviewDialogItem(target);
       return;
     }
@@ -123,7 +132,16 @@ const Index = () => {
     );
   };
 
-  const handleReviewSubmit = (understanding: number, wrongCount: number) => {
+  /** 홈 타이머에서 '학습 완료'를 누르면: 항목이 있으면 측정 시간과 함께 결과 입력 다이얼로그를 연다 */
+  const handleTimerComplete = (itemId: string | null, minutes: number) => {
+    if (!itemId) return; // 자유 학습은 기록 없이 종료 (토스트는 타이머가 처리)
+    const target = items.find((i) => i.id === itemId);
+    if (!target) return;
+    setPendingMinutes(minutes);
+    setReviewDialogItem(target);
+  };
+
+  const handleReviewSubmit = (understanding: number, wrongCount: number, actualMinutes: number) => {
     if (!reviewDialogItem) return;
     const completed: StudyItem = {
       ...reviewDialogItem,
@@ -131,6 +149,7 @@ const Index = () => {
       completedAt: new Date().toISOString(),
       understanding,
       wrongCount,
+      actualMinutes: actualMinutes > 0 ? actualMinutes : undefined,
     };
     setItems((prev) => {
       let next = prev.map((it) => (it.id === completed.id ? completed : it));
@@ -145,6 +164,7 @@ const Index = () => {
       toast.success("복습 완료! 잘하고 있어요.");
     }
     setReviewDialogItem(null);
+    setPendingMinutes(null);
   };
 
   const handleSave = (item: StudyItem) => {
@@ -280,6 +300,12 @@ if (!authUser) {
         ) : (
           /* ===== 홈 화면 ===== */
           <>
+        {/* 학습 타이머 - 최상단 배치로 가장 먼저 눈에 띄게 (실제 학습 시간 측정·기록) */}
+        <StudyTimer
+          items={todayPending}
+          onComplete={handleTimerComplete}
+        />
+
         <section>
           <h2 className="text-2xl font-bold mb-1">
             오늘의 <span className="text-gradient">학습 대시보드</span>
@@ -452,8 +478,14 @@ if (!authUser) {
       />
       <ReviewCompleteDialog
         open={!!reviewDialogItem}
-        onOpenChange={(o) => !o && setReviewDialogItem(null)}
+        onOpenChange={(o) => {
+          if (!o) {
+            setReviewDialogItem(null);
+            setPendingMinutes(null);
+          }
+        }}
         item={reviewDialogItem}
+        defaultMinutes={pendingMinutes ?? undefined}
         onSubmit={handleReviewSubmit}
       />
     </div>

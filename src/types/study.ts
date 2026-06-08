@@ -33,4 +33,5 @@ export interface StudyItem {
   examDate?: string;        // 시험일 (있으면 마감/복습 한도)
   understanding?: number;   // 1~5 (완료 시 입력)
   wrongCount?: number;      // 오답 수 (완료 시 입력)
+  actualMinutes?: number;   // 타이머로 측정한 실제 학습 시간(분) (완료 시 입력)
 }
