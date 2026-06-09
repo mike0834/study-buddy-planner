@@ -1,56 +1,92 @@
 # RevoStudy — 적응형 학습 플래너
 
-내게 맞춰 진화하는 한국어 적응형 학습 플래너. 오늘의 공부 계획, 마감일, 진도율과 맞춤 추천을 한 곳에서 관리할 수 있습니다.
+> 내게 맞춰 진화하는 한국어 적응형 학습 플래너.
+> 오늘의 공부 계획, 마감일, 진도율과 맞춤 추천을 한 곳에서 관리할 수 있습니다.
+
+---
+
+## 소개
+
+RevoStudy는 학습자가 스스로의 공부 패턴을 기록하고 분석하면서, 그 데이터를 바탕으로 다음 학습 계획을 조정해 나가는 적응형 플래너입니다. 단순한 할 일 관리에서 그치지 않고, 진척도·통계·복습 피드백을 연동해 "공부 → 기록 → 복습 → 재계획"의 사이클을 한 화면에서 돌릴 수 있도록 설계했습니다. 여기에 타이머, 복습 퀴즈, 파티 공성전 같은 게이미피케이션 요소를 더해 학습 동기를 높입니다.
+
+---
 
 ## 주요 기능
 
-- **학습 계획 입력** — 과목, 목표 시간, 마감일을 한 번에 등록
-- **할 일 목록(Task List)** — 오늘 해야 할 일을 체크리스트로 관리
-- **과목별 진척도** — 과목마다 현재 진행률을 시각적으로 확인
-- **학습 통계** — 누적 학습 시간, 완료율, 연속 출석일 등 요약
-- **복습/피드백** — 학습 종료 시 피드백 기록과 복습 다이얼로그 제공
+| 기능 | 설명 |
+| --- | --- |
+| **학습 계획 입력** | 과목, 목표 시간, 마감일을 한 번에 등록 (StudyForm) |
+| **할 일 목록 (Task List)** | 오늘 해야 할 일을 체크리스트로 관리 |
+| **학습 타이머** | 공부 시간을 실시간으로 측정하고 기록 |
+| **과목별 진척도** | 과목마다 현재 진행률을 시각적으로 확인 (SubjectProgress) |
+| **학습 통계** | 누적 학습 시간, 완료율, 연속 출석일 등 요약 (StatCard · 통계 대시보드) |
+| **복습 / 피드백** | 학습 종료 시 피드백 기록과 복습 다이얼로그 제공 (FeedbackPanel, ReviewCompleteDialog) |
+| **복습 퀴즈** | 학습한 내용을 퀴즈로 다시 점검 |
+| **계획 다시 짜기 (적응형 재구성)** | 계획이 **밀렸을 때** 미완료를 쌓아두지 않고, 시험일까지 남은 기간에 부담 없이 자동 재분배. 복습은 에빙하우스 망각곡선 간격을 유지하고, 자주 미루는 위험 과목은 25분 단위로 쪼개 우선순위를 올림 (adaptive re-plan 엔진) |
+| **로그인** | 사용자별 학습 데이터 관리 (프론트 + 백엔드) |
+| **파티 공성전** | 팀원이 함께 목표를 달성하는 게이미피케이션 모드 |
+
+> 💡 **밀림 대응 설계**: 시간대 때문에 "오늘 날짜가 하루 밀려" 오늘 복습이 누락되던 버그를 로컬 달력 기준 계산으로 수정하고 회귀 방지 테스트를 추가했으며, 계획 자체가 밀렸을 때는 위 *계획 다시 짜기* 엔진이 미완료 항목을 부담 없이 재분배합니다.
+
+---
+
+## 기술 스택
+
+| 구분 | 사용 기술 |
+| --- | --- |
+| **프론트엔드** | React 18, TypeScript, Vite |
+| **UI** | Tailwind CSS, shadcn/ui, Radix UI |
+| **상태 관리** | React Query, React Hook Form |
+| **테스트** | Vitest, Testing Library |
+| **기타** | date-fns, Zod, Recharts |
+
+---
 
 ## 팀원 및 역할 분담
 
 | 이름 | GitHub | 담당 |
-|------|--------|------|
-| 최민기 | [@mike0834](https://github.com/mike0834) | 프로젝트 총괄 · 메인 화면 · 문서화 |
-| 현승재 | [@Hyun0325](https://github.com/Hyun0325) | 학습 계획 입력 기능 (StudyForm) |
-| 이상원 | [@kalleey030807-dotcom] | 진척도 / 통계 UI (SubjectProgress, StatCard, TaskList) |
-| 이동현 | [@wlr6709](https://github.com/wlr6709) | 복습 / 피드백 기능 (FeedbackPanel, ReviewCompleteDialog) |
+| --- | --- | --- |
+| **최민기** | [@mike0834](https://github.com/mike0834) | 프로젝트 총괄 · 메인 화면 · 문서화 · 머지 관리 |
+| **현승재** | [@Hyun0325](https://github.com/Hyun0325) | 학습 계획 입력 (StudyForm) · 로그인 화면 (프론트/백엔드) · 통계 대시보드 |
+| **이상원** | [@kalleey030807-dotcom](https://github.com/kalleey030807-dotcom) | 진척도 / 통계 UI (SubjectProgress, StatCard, TaskList) · 학습 타이머 · 적응형 계획 재구성 · 파티 공성전 |
+| **이동현** | [@wlr6709](https://github.com/wlr6709) | 복습 / 피드백 (FeedbackPanel, ReviewCompleteDialog) · 복습 퀴즈 |
 
-## 기술 스택
+---
 
-- **프론트엔드**: React 18, TypeScript, Vite
-- **UI**: Tailwind CSS, shadcn/ui, Radix UI
-- **상태 관리**: React Query, React Hook Form
-- **테스트**: Vitest, Testing Library
-- **그 외**: date-fns, Zod, Recharts
+## 기여도 분석 (커밋 기준)
 
-## 실행 방법 (아직 아님.)
+저장소 커밋 로그를 분석해 동일 인물의 여러 계정/봇 커밋을 합산한 결과입니다.
 
-```bash
-# 1. 저장소 클론
-git clone https://github.com/mike0834/study-buddy-planner.git
-cd study-buddy-planner
+| 표기 (GitHub) | 실제 인물 | 커밋 수 | 비고 |
+| --- | --- | ---: | --- |
+| 최민기 + mike0834 | 최민기 *(동일 이메일)* | 34 + 22 = **56** | 총괄 · 머지 · 문서 (머지 커밋 다수 포함) |
+| kalleey030807-dotcom | 이상원 | **11** | TaskList, 타이머, 적응형 재구성, 파티 공성전 |
+| Hyun0325 | 현승재 | **10** | 로그인, 통계 대시보드 |
+| wlr6709 | 이동현 | **8** | 복습 / 피드백, 퀴즈 |
+| Lovable + gpt-engineer-app[bot] | 팀 공동 (Lovable) | 1 + 10 = **11** | 초기 골격 · 메인 화면 (자동 생성) |
+| **합계** | | **96** | |
 
-# 2. 의존성 설치
-npm install
+> 참고: **최민기는 팀 조장**으로서 프로젝트를 총괄하며 각 팀원의 Pull Request를 `main`에 병합(머지)하는 역할을 맡았습니다. 그래서 커밋 수에 PR 병합 과정에서 생성된 머지 커밋이 다수 포함되어 있습니다. 또한 Lovable / gpt-engineer-app[bot] 커밋은 초기 프로젝트 골격을 자동 생성한 것으로, 특정 개인의 기여가 아닌 **팀 공동 결과물**입니다.
 
-# 3. 개발 서버 실행
-npm run dev
+---
 
-# 4. 브라우저에서 열기
-# http://localhost:8080
-```
+## 실행 방법
+
+> 별도 설치 없이 아래 링크에서 바로 사용할 수 있습니다 (GitHub Pages 자동 배포).
+
+👉 **[RevoStudy 바로가기](https://mike0834.github.io/study-buddy-planner/)**
+
+---
 
 ## 브랜치 전략
 
-- `main` — 배포 가능한 안정 버전
-- `feature/*` — 각 기능별 작업 브랜치 (예: `feature/setup-readme`, `feature/study-form`)
+- **main** — 배포 가능한 안정 버전
+- **feature/\*** — 각 기능별 작업 브랜치 (예: `feature/setup-readme`, `feature/study-form`)
 
-각 팀원은 본인 담당 기능의 브랜치를 만들어 작업한 뒤, Pull Request를 통해 `main`에 병합합니다.
+각 팀원은 본인 담당 기능의 브랜치를 만들어 작업한 뒤, Pull Request를 통해 `main`에 병합합니다. (병합은 조장인 최민기가 총괄합니다.)
+
+---
 
 ## 라이선스
 
-학습 목적의 팀 프로젝트입니다. (RevoStudy Team)
+학습 목적의 팀 프로젝트입니다. © RevoStudy Team
